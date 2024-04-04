@@ -2213,6 +2213,9 @@ typedef enum {
   /* set ECH configuration  */
   CURLOPT(CURLOPT_ECH, CURLOPTTYPE_STRINGPOINT, 325),
 
+  /* Set MPTCP */
+  CURLOPT(CURLOPT_MPTCP, CURLOPTTYPE_LONG, 326),
+
   CURLOPT_LASTENTRY /* the last unused */
 } CURLoption;
 

@@ -1878,6 +1878,7 @@ struct UserDefined {
 #ifdef USE_ECH
   int tls_ech;      /* TLS ECH configuration  */
 #endif
+  BIT(mptcp); /* enable MPTCP support */
 };
 
 #ifndef CURL_DISABLE_MIME

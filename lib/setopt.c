@@ -2926,6 +2926,9 @@ CURLcode Curl_vsetopt(struct Curl_easy *data, CURLoption option, va_list param)
     result = CURLE_NOT_BUILT_IN;
 #endif
     break;
+  case CURLOPT_MPTCP:
+    data->set.mptcp = TRUE;
+    break;
   case CURLOPT_SSL_ENABLE_NPN:
     break;
   case CURLOPT_SSL_ENABLE_ALPN:
