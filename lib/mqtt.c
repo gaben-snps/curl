@@ -729,11 +729,16 @@ MQTT_SUBACK_COMING:
     }
 
     /* read payload */
-
-    result = Curl_client_write(data, CLIENTWRITE_BODY,
+    if(nread - nprocessed > 0) {
+      result = Curl_client_write(data, CLIENTWRITE_BODY,
                                &buffer[nprocessed], nread - nprocessed);
-    if(result)
-      goto end;
+      if(result)
+        goto end;
+    }
+    else {
+      /* zero length payload are valid in MQTT */
+      infof(data, "Zero length payload");
+    }
 
     mq->npacket -= nread;
     if(!mq->npacket)
