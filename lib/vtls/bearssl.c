@@ -327,7 +327,7 @@ static unsigned x509_end_chain(const br_x509_class **ctx)
   struct x509_context *x509 = (struct x509_context *)ctx;
 
   if(!x509->verifypeer) {
-    return br_x509_decoder_last_error(&x509->decoder);
+    return (unsigned)br_x509_decoder_last_error(&x509->decoder);
   }
 
   return x509->minimal.vtable->end_chain(&x509->minimal.vtable);
@@ -724,7 +724,7 @@ static CURLcode bearssl_run_until(struct Curl_cfilter *cf,
       if(ret <= 0) {
         return result;
       }
-      br_ssl_engine_sendrec_ack(&backend->ctx.eng, ret);
+      br_ssl_engine_sendrec_ack(&backend->ctx.eng, (size_t)ret);
     }
     else if(state & BR_SSL_RECVREC) {
       buf = br_ssl_engine_recvrec_buf(&backend->ctx.eng, &len);
@@ -737,7 +737,7 @@ static CURLcode bearssl_run_until(struct Curl_cfilter *cf,
       if(ret <= 0) {
         return result;
       }
-      br_ssl_engine_recvrec_ack(&backend->ctx.eng, ret);
+      br_ssl_engine_recvrec_ack(&backend->ctx.eng, (size_t)ret);
     }
   }
 }
@@ -864,7 +864,7 @@ static ssize_t bearssl_send(struct Curl_cfilter *cf, struct Curl_easy *data,
     if(backend->pending_write) {
       applen = backend->pending_write;
       backend->pending_write = 0;
-      return applen;
+      return (ssize_t)applen;
     }
     if(applen > len)
       applen = len;
@@ -897,7 +897,7 @@ static ssize_t bearssl_recv(struct Curl_cfilter *cf, struct Curl_easy *data,
   memcpy(buf, app, applen);
   br_ssl_engine_recvapp_ack(&backend->ctx.eng, applen);
 
-  return applen;
+  return (ssize_t)applen;
 }
 
 static CURLcode bearssl_connect_common(struct Curl_cfilter *cf,
@@ -1004,7 +1004,7 @@ static CURLcode bearssl_connect_common(struct Curl_cfilter *cf,
 
 static size_t bearssl_version(char *buffer, size_t size)
 {
-  return msnprintf(buffer, size, "BearSSL");
+  return (size_t)msnprintf(buffer, size, "BearSSL");
 }
 
 static bool bearssl_data_pending(struct Curl_cfilter *cf,
