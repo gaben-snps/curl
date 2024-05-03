@@ -156,7 +156,7 @@ static bool fix_excessive_path(const TCHAR *in, TCHAR **out)
   fbuf = malloc(needed * sizeof(wchar_t));
   if(!fbuf)
     goto error;
-  written = (size_t)GetFullPathNameW(in_w, needed, fbuf, NULL);
+  written = (size_t)GetFullPathNameW(in_w, (DWORD)needed, fbuf, NULL);
   if(!written || written >= needed)
     goto error;
 
