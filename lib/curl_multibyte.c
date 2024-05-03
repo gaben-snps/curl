@@ -141,6 +141,9 @@ static bool fix_excessive_path(const TCHAR *in, TCHAR **out)
   needed = (size_t)GetFullPathNameW(in_w, 0, NULL, NULL);
   if(!needed || needed > (32767 - 4))
     goto error;
+  /* ignore paths which are not excessive and don't need modification */
+  if(needed <= MAX_PATH)
+    goto error;
   fbuf = malloc((needed + 4)* sizeof(wchar_t));
   if(!fbuf)
     goto error;
