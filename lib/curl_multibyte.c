@@ -99,7 +99,7 @@ char *curlx_convert_wchar_to_UTF8(const wchar_t *str_w)
  * For example 'in' filename255chars in current directory C:\foo\bar is
  * fixed as \\?\C:\foo\bar\filename255chars for 'out' which will tell Windows
  * it's ok to access that filename even though the actual full path is longer
- * than 255 chars.
+ * than 260 chars.
  *
  * For non-Unicode builds this function may fail sometimes because only the
  * Unicode versions of some Windows API functions can access paths longer than
@@ -113,6 +113,9 @@ static bool fix_excessive_path(const TCHAR *in, TCHAR **out)
   const wchar_t *in_w;
   wchar_t *fbuf = NULL;
 
+  /* MS documented "approximate" limit for the maximum path length */
+  const size_t max_path_len = 32767;
+
 #ifndef _UNICODE
   wchar_t *ibuf = NULL;
   char *obuf = NULL;
@@ -120,10 +123,14 @@ static bool fix_excessive_path(const TCHAR *in, TCHAR **out)
 
   *out = NULL;
 
+  /* skip paths already normalized */
+  if(!_tcsncmp(in, _T("\\\\?\\"), 4))
+    goto error;
+
 #ifndef _UNICODE
   /* convert multibyte input to unicode */
   needed = mbstowcs(NULL, in, 0);
-  if(needed == (size_t)-1 || needed >= (32767 - 4))
+  if(needed == (size_t)-1 || needed >= max_path_len)
     goto error;
   ++needed; /* for NUL */
   ibuf = malloc(needed * sizeof(wchar_t));
@@ -137,25 +144,69 @@ static bool fix_excessive_path(const TCHAR *in, TCHAR **out)
   in_w = in;
 #endif
 
-  /* get full unicode path of the unicode filename or path */
+  /* GetFullPathNameW returns the normalized full path in unicode. It converts
+     forward slashes to backslashes, processes .. to remove directory segments,
+     etc. Unlike GetFullPathNameA it can process paths that exceed MAX_PATH. */
   needed = (size_t)GetFullPathNameW(in_w, 0, NULL, NULL);
-  if(!needed || needed > (32767 - 4))
+  if(!needed || needed > max_path_len)
     goto error;
-  /* ignore paths which are not excessive and don't need modification */
+  /* skip paths that are not excessive and don't need modification */
   if(needed <= MAX_PATH)
     goto error;
-  fbuf = malloc((needed + 4)* sizeof(wchar_t));
+  fbuf = malloc(needed * sizeof(wchar_t));
   if(!fbuf)
     goto error;
-  wcsncpy(fbuf, L"\\\\?\\", 4);
-  written = (size_t)GetFullPathNameW(in_w, needed, fbuf + 4, NULL);
+  written = (size_t)GetFullPathNameW(in_w, needed, fbuf, NULL);
   if(!written || written >= needed)
     goto error;
+
+  /* prepend \\?\ or \\?\UNC\ to the excessively long path.
+   *
+   * c:\longpath            --->    \\?\c:\longpath
+   * \\.\c:\longpath        --->    \\?\c:\longpath
+   * \\?\c:\longpath        --->    \\?\c:\longpath  (unchanged)
+   * \\server\c$\longpath   --->    \\?\UNC\server\c$\longpath
+   *
+   * https://learn.microsoft.com/en-us/dotnet/standard/io/file-path-formats
+   */
+  if(!wcsncmp(fbuf, L"\\\\?\\", 4))
+    ; /* do nothing */
+  else if(!wcsncmp(fbuf, L"\\\\.\\", 4))
+    fbuf[2] = '?';
+  else if(!wcsncmp(fbuf, L"\\\\.", 3) || !wcsncmp(fbuf, L"\\\\?", 3)) {
+    /* Unexpected, not UNC. The formatting doc doesn't allow this AFAICT. */
+    goto error;
+  }
+  else {
+    wchar_t *temp;
+    size_t newlen;
+    bool unc = !wcsncmp(fbuf, L"\\\\", 2);
+
+    newlen = (unc ? sizeof("\\\\?\\UNC\\") : sizeof("\\\\?\\")) + written + 1;
+    if(newlen > max_path_len)
+      goto error;
+
+    temp = malloc(newlen * sizeof(wchar_t));
+    if(!temp)
+      goto error;
+
+    if(unc) {
+      wcsncpy(temp, L"\\\\?\\UNC\\", 8);
+      wcscpy(temp + 8, fbuf + 2);
+    }
+    else {
+      wcsncpy(temp, L"\\\\?\\", 4);
+      wcscpy(temp + 4, fbuf);
+    }
+
+    free(fbuf);
+    fbuf = temp;
+  }
 
 #ifndef _UNICODE
   /* convert unicode full path to multibyte output */
   needed = wcstombs(NULL, fbuf, 0);
-  if(needed == (size_t)-1 || needed >= 32767)
+  if(needed == (size_t)-1 || needed >= max_path_len)
     goto error;
   ++needed; /* for NUL */
   obuf = malloc(needed);
