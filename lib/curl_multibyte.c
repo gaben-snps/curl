@@ -88,12 +88,157 @@ char *curlx_convert_wchar_to_UTF8(const wchar_t *str_w)
 
 #if defined(USE_WIN32_LARGE_FILES) || defined(USE_WIN32_SMALL_FILES)
 
+
+/* Fix excessive paths (paths that exceed MAX_PATH length of 260).
+ *
+ * This is a helper function to fix paths that would exceed the MAX_PATH
+ * limitation check done by Windows APIs. It does so by normalizing the passed
+ * in filename or path 'in' to its full canonical path, and if that path is
+ * longer than MAX_PATH then setting 'out' to "\\?\" prefix + that full path.
+ *
+ * For example 'in' filename255chars in current directory C:\foo\bar is
+ * fixed as \\?\C:\foo\bar\filename255chars for 'out' which will tell Windows
+ * it's ok to access that filename even though the actual full path is longer
+ * than 260 chars.
+ *
+ * For non-Unicode builds this function may fail sometimes because only the
+ * Unicode versions of some Windows API functions can access paths longer than
+ * MAX_PATH, for example GetFullPathNameW which is used in this function. When
+ * the full path is then converted from Unicode to multibyte that fails if any
+ * directories in the path contain characters not in the current codepage.
+ */
+static bool fix_excessive_path(const TCHAR *in, TCHAR **out)
+{
+  size_t needed, written;
+  const wchar_t *in_w;
+  wchar_t *fbuf = NULL;
+
+  /* MS documented "approximate" limit for the maximum path length */
+  const size_t max_path_len = 32767;
+
+#ifndef _UNICODE
+  wchar_t *ibuf = NULL;
+  char *obuf = NULL;
+#endif
+
+  *out = NULL;
+
+  /* skip paths already normalized */
+  if(!_tcsncmp(in, _T("\\\\?\\"), 4))
+    goto error;
+
+#ifndef _UNICODE
+  /* convert multibyte input to unicode */
+  needed = mbstowcs(NULL, in, 0);
+  if(needed == (size_t)-1 || needed >= max_path_len)
+    goto error;
+  ++needed; /* for NUL */
+  ibuf = malloc(needed * sizeof(wchar_t));
+  if(!ibuf)
+    goto error;
+  written = mbstowcs(ibuf, in, needed);
+  if(written == (size_t)-1 || written >= needed)
+    goto error;
+  in_w = ibuf;
+#else
+  in_w = in;
+#endif
+
+  /* GetFullPathNameW returns the normalized full path in unicode. It converts
+     forward slashes to backslashes, processes .. to remove directory segments,
+     etc. Unlike GetFullPathNameA it can process paths that exceed MAX_PATH. */
+  needed = (size_t)GetFullPathNameW(in_w, 0, NULL, NULL);
+  if(!needed || needed > max_path_len)
+    goto error;
+  /* skip paths that are not excessive and don't need modification */
+  if(needed <= MAX_PATH)
+    goto error;
+  fbuf = malloc(needed * sizeof(wchar_t));
+  if(!fbuf)
+    goto error;
+  written = (size_t)GetFullPathNameW(in_w, (DWORD)needed, fbuf, NULL);
+  if(!written || written >= needed)
+    goto error;
+
+  /* prepend \\?\ or \\?\UNC\ to the excessively long path.
+   *
+   * c:\longpath            --->    \\?\c:\longpath
+   * \\.\c:\longpath        --->    \\?\c:\longpath
+   * \\?\c:\longpath        --->    \\?\c:\longpath  (unchanged)
+   * \\server\c$\longpath   --->    \\?\UNC\server\c$\longpath
+   *
+   * https://learn.microsoft.com/en-us/dotnet/standard/io/file-path-formats
+   */
+  if(!wcsncmp(fbuf, L"\\\\?\\", 4))
+    ; /* do nothing */
+  else if(!wcsncmp(fbuf, L"\\\\.\\", 4))
+    fbuf[2] = '?';
+  else if(!wcsncmp(fbuf, L"\\\\.", 3) || !wcsncmp(fbuf, L"\\\\?", 3)) {
+    /* Unexpected, not UNC. The formatting doc doesn't allow this AFAICT. */
+    goto error;
+  }
+  else {
+    wchar_t *temp;
+    size_t newlen;
+    bool unc = !wcsncmp(fbuf, L"\\\\", 2);
+
+    newlen = (unc ? sizeof("\\\\?\\UNC\\") : sizeof("\\\\?\\")) + written + 1;
+    if(newlen > max_path_len)
+      goto error;
+
+    temp = malloc(newlen * sizeof(wchar_t));
+    if(!temp)
+      goto error;
+
+    if(unc) {
+      wcsncpy(temp, L"\\\\?\\UNC\\", 8);
+      wcscpy(temp + 8, fbuf + 2);
+    }
+    else {
+      wcsncpy(temp, L"\\\\?\\", 4);
+      wcscpy(temp + 4, fbuf);
+    }
+
+    free(fbuf);
+    fbuf = temp;
+  }
+
+#ifndef _UNICODE
+  /* convert unicode full path to multibyte output */
+  needed = wcstombs(NULL, fbuf, 0);
+  if(needed == (size_t)-1 || needed >= max_path_len)
+    goto error;
+  ++needed; /* for NUL */
+  obuf = malloc(needed);
+  if(!obuf)
+    goto error;
+  written = wcstombs(obuf, fbuf, needed);
+  if(written == (size_t)-1 || written >= needed)
+    goto error;
+  *out = obuf;
+  obuf = NULL;
+#else
+  *out = fbuf;
+  fbuf = NULL;
+#endif
+
+error:
+  free(fbuf);
+#ifndef _UNICODE
+  free(ibuf);
+  free(obuf);
+#endif
+  return (*out ? true : false);
+}
+
 int curlx_win32_open(const char *filename, int oflag, ...)
 {
   int pmode = 0;
+  int result = -1;
+  TCHAR *fixed = NULL;
+  const TCHAR *target = NULL;
 
 #ifdef _UNICODE
-  int result = -1;
   wchar_t *filename_w = curlx_convert_UTF8_to_wchar(filename);
 #endif
 
@@ -105,75 +250,125 @@ int curlx_win32_open(const char *filename, int oflag, ...)
 
 #ifdef _UNICODE
   if(filename_w) {
-    result = _wopen(filename_w, oflag, pmode);
+    if(fix_excessive_path(filename_w, &fixed))
+      target = fixed;
+    else
+      target = filename_w;
+    result = _wopen(target, oflag, pmode);
     curlx_unicodefree(filename_w);
   }
   else
     errno = EINVAL;
-  return result;
 #else
-  return (_open)(filename, oflag, pmode);
+  if(fix_excessive_path(filename, &fixed))
+    target = fixed;
+  else
+    target = filename;
+  result = (_open)(target, oflag, pmode);
 #endif
+
+  free(fixed);
+  return result;
 }
 
 FILE *curlx_win32_fopen(const char *filename, const char *mode)
 {
-#ifdef _UNICODE
   FILE *result = NULL;
+  TCHAR *fixed = NULL;
+  const TCHAR *target = NULL;
+
+#ifdef _UNICODE
   wchar_t *filename_w = curlx_convert_UTF8_to_wchar(filename);
   wchar_t *mode_w = curlx_convert_UTF8_to_wchar(mode);
-  if(filename_w && mode_w)
-    result = _wfopen(filename_w, mode_w);
+  if(filename_w && mode_w) {
+    if(fix_excessive_path(filename_w, &fixed))
+      target = fixed;
+    else
+      target = filename_w;
+    result = _wfopen(target, mode_w);
+  }
   else
     errno = EINVAL;
   curlx_unicodefree(filename_w);
   curlx_unicodefree(mode_w);
-  return result;
 #else
-  return (fopen)(filename, mode);
+  if(fix_excessive_path(filename, &fixed))
+    target = fixed;
+  else
+    target = filename;
+  result = (fopen)(target, mode);
 #endif
+
+  free(fixed);
+  return result;
 }
 
 int curlx_win32_stat(const char *path, struct_stat *buffer)
 {
-#ifdef _UNICODE
   int result = -1;
+  TCHAR *fixed = NULL;
+  const TCHAR *target = NULL;
+
+#ifdef _UNICODE
   wchar_t *path_w = curlx_convert_UTF8_to_wchar(path);
   if(path_w) {
+    if(fix_excessive_path(path_w, &fixed))
+      target = fixed;
+    else
+      target = path_w;
 #if defined(USE_WIN32_SMALL_FILES)
-    result = _wstat(path_w, buffer);
+    result = _wstat(target, buffer);
 #else
-    result = _wstati64(path_w, buffer);
+    result = _wstati64(target, buffer);
 #endif
     curlx_unicodefree(path_w);
   }
   else
     errno = EINVAL;
-  return result;
 #else
+  if(fix_excessive_path(path, &fixed))
+    target = fixed;
+  else
+    target = path;
 #if defined(USE_WIN32_SMALL_FILES)
-  return _stat(path, buffer);
+  result = _stat(target, buffer);
 #else
-  return _stati64(path, buffer);
+  result = _stati64(target, buffer);
 #endif
 #endif
+
+  free(fixed);
+  return result;
 }
 
 int curlx_win32_access(const char *path, int mode)
 {
-#if defined(_UNICODE)
   int result = -1;
+  TCHAR *fixed = NULL;
+  const TCHAR *target = NULL;
+
+#if defined(_UNICODE)
   wchar_t *path_w = curlx_convert_UTF8_to_wchar(path);
   if(path_w) {
-    result = _waccess(path_w, mode);
+    if(fix_excessive_path(path_w, &fixed))
+      target = fixed;
+    else
+      target = path_w;
+    result = _waccess(target, mode);
     curlx_unicodefree(path_w);
   }
   else
     errno = EINVAL;
-  return result;
 #else
-  return _access(path, mode);
+  if(fix_excessive_path(path, &fixed))
+    target = fixed;
+  else
+    target = path;
+  result = _access(target, mode);
 #endif
+
+  free(fixed);
+  return result;
 }
 
 #endif /* USE_WIN32_LARGE_FILES || USE_WIN32_SMALL_FILES */
