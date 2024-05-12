@@ -45,6 +45,10 @@
 #  include <proto/dos.h>
 #endif
 
+#ifdef HAVE_NETINET_IN_H
+#  include <netinet/in.h>
+#endif
+
 #define ENABLE_CURLX_PRINTF
 /* use our own printf() functions */
 #include "curlx.h"
@@ -97,6 +101,10 @@ CURLcode curl_easy_perform_ev(CURL *easy);
 #  define O_BINARY 0
 #endif
 
+#ifndef SOL_IP
+#  define SOL_IP IPPROTO_IP
+#endif
+
 #define CURL_CA_CERT_ERRORMSG                                               \
   "More details here: https://curl.se/docs/sslcerts.html\n\n"          \
   "curl failed to verify the legitimacy of the server and therefore "       \
@@ -143,6 +151,40 @@ static bool is_pkcs11_uri(const char *string)
     return FALSE;
   }
 }
+
+#ifdef IP_TOS
+static int get_address_family(curl_socket_t sockfd)
+{
+  struct sockaddr_storage addr;
+  socklen_t addrlen = sizeof(addr);
+  if(getsockname(sockfd, (struct sockaddr *)&addr, &addrlen) == 0)
+    return addr.ss_family;
+  return AF_UNSPEC;
+}
+#endif
+
+static int sockopt_callback(void *clientp, curl_socket_t curlfd,
+                            curlsocktype purpose)
+{
+  struct OperationConfig *config = (struct OperationConfig *)clientp;
+  if(purpose != CURLSOCKTYPE_IPCXN)
+    return CURL_SOCKOPT_OK;
+  (void)config;
+  (void)curlfd;
+#ifdef IP_TOS
+  if(config->ip_tos > 0 && get_address_family(curlfd) == AF_INET) {
+    int tos = (int)config->ip_tos;
+    if(setsockopt(curlfd, SOL_IP, IP_TOS,
+      (const char *)&tos, sizeof(tos)) < 0) {
+      int error = errno;
+      warnf(config->global, "IP_TOS %d failed with errno %d: %s;\n",
+            tos, error, strerror(error));
+    }
+  }
+#endif
+  return CURL_SOCKOPT_OK;
+}
+
 
 #ifdef __VMS
 /*
@@ -2196,6 +2238,11 @@ static CURLcode single_transfer(struct GlobalConfig *global,
         if(config->ech_config) /* only if set (optional) */
           my_setopt_str(curl, CURLOPT_ECH, config->ech_config);
 #endif
+
+        if(config->ip_tos > 0) {
+          my_setopt(curl, CURLOPT_SOCKOPTFUNCTION, sockopt_callback);
+          my_setopt(curl, CURLOPT_SOCKOPTDATA, config);
+        }
 
         /* initialize retry vars for loop below */
         per->retry_sleep_default = (config->retry_delay) ?

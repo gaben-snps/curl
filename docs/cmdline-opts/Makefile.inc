@@ -292,6 +292,7 @@ DPAGES = \
   trace-ids.md \
   trace-time.md \
   trace.md \
+  type-of-service.md \
   unix-socket.md \
   upload-file.md \
   url.md \

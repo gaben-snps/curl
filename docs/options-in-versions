@@ -257,6 +257,7 @@
 --trace-config                       8.3.0
 --trace-ids                          8.2.0
 --trace-time                         7.14.0
+--type-of-service                    8.9.0
 --unix-socket                        7.40.0
 --upload-file (-T)                   4.0
 --url                                7.5

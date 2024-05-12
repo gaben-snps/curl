@@ -214,6 +214,8 @@ ECHConfig
 ECHConfigList
 ECONNREFUSED
 eCOS
+ECT
+EF
 EFnet
 EGD
 EHLO
@@ -456,6 +458,8 @@ LOGDIR
 logfile
 lookups
 loopback
+LOWCOST
+LOWDELAY
 LPRT
 LSB
 lseek
@@ -487,6 +491,7 @@ Micrium
 MicroBlaze
 MicroOS
 middlebox
+MINCOST
 mingw
 MinGW
 MINIX
@@ -836,6 +841,7 @@ toolchain
 toolchains
 toolset
 toplevel
+TOS
 TPF
 TrackMemory
 transcode
