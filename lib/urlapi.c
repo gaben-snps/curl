@@ -205,7 +205,7 @@ static CURLUcode urlencode_str(struct dynbuf *o, const char *url,
 size_t Curl_is_absolute_url(const char *url, char *buf, size_t buflen,
                             bool guess_scheme)
 {
-  int i = 0;
+  size_t i = 0;
   DEBUGASSERT(!buf || (buflen > MAX_SCHEME_LEN));
   (void)buflen; /* only used in debug-builds */
   if(buf)
@@ -232,7 +232,7 @@ size_t Curl_is_absolute_url(const char *url, char *buf, size_t buflen,
        be the host name "data" with a specified port number. */
 
     /* the length of the scheme is the name part only */
-    size_t len = (size_t)i;
+    size_t len = i;
     if(buf) {
       Curl_strntolower(buf, url, i);
       buf[i] = 0;
