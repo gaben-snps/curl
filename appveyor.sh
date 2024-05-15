@@ -139,7 +139,7 @@ if [ "${TESTING}" = 'ON' ]; then
   elif [ -x "$(cygpath -u 'C:/msys64/usr/bin/curl.exe')" ]; then
     TFLAGS+=" -ac $(cygpath -u 'C:/msys64/usr/bin/curl.exe')"
   fi
-  TFLAGS+=" ${DISABLED_TESTS:-}"
+  TFLAGS+=" ${DISABLED_TESTS:-} ${PARALLEL_TESTS:-}"
   if [ "${BUILD_SYSTEM}" = 'CMake' ]; then
     cmake --build _bld --config "${PRJ_CFG}" --parallel 2 --target testdeps
     ls _bld/lib/*.dll >/dev/null 2>&1 && cp -f -p _bld/lib/*.dll _bld/tests/libtest/
