@@ -403,7 +403,7 @@ static int ProcessRequest(struct httprequest *req)
                         &prot_minor) == 2) {
         /* between the request keyword and HTTP/ there's a path */
         httppath = line + strlen(request);
-        npath = http - httppath;
+        npath = (size_t)(http - httppath);
 
         /* trim leading spaces */
         while(npath && ISSPACE(*httppath)) {
@@ -516,7 +516,7 @@ static int ProcessRequest(struct httprequest *req)
             else
               portp = p + 1;
 
-            req->testno = part;
+            req->testno = (long)part;
           }
           else
             portp = strchr(doc, ':');
@@ -642,7 +642,7 @@ static int ProcessRequest(struct httprequest *req)
       if(req->skipall)
         req->cl = 0;
       else
-        req->cl = clen - req->skip;
+        req->cl = (size_t)clen - (size_t)req->skip;
 
       logmsg("Found Content-Length: %lu in the request", clen);
       if(req->skip)
@@ -755,7 +755,7 @@ static int ProcessRequest(struct httprequest *req)
       !strncmp(req->reqbuf, "HEAD", strlen("HEAD")))) {
     /* If we have a persistent connection, HTTP version >= 1.1
        and GET/HEAD request, enable pipelining. */
-    req->checkindex = (end - req->reqbuf) + strlen(end_of_headers);
+    req->checkindex = (size_t)(end - req->reqbuf) + strlen(end_of_headers);
   }
 
   /* If authentication is required and no auth was provided, end now. This
@@ -775,7 +775,8 @@ static int ProcessRequest(struct httprequest *req)
   }
 
   if(req->cl > 0) {
-    if(req->cl <= req->offset - (end - req->reqbuf) - strlen(end_of_headers))
+    if(req->cl <= req->offset -
+                  (size_t)(end - req->reqbuf) - strlen(end_of_headers))
       return 1; /* done */
     else
       return 0; /* not complete yet */
@@ -895,8 +896,8 @@ static int get_request(curl_socket_t sock, struct httprequest *req)
       do {
         got = sread(sock, reqbuf + req->offset, REQBUFSIZ - req->offset);
         if(got > 0) {
-          req->offset += got;
-          logmsg("Got %zu bytes from client", got);
+          req->offset += (size_t)got;
+          logmsg("Got %zu bytes from client", (size_t)got);
         }
 
         if((got == -1) && ((EAGAIN == errno) || (EWOULDBLOCK == errno))) {
@@ -909,7 +910,14 @@ static int get_request(curl_socket_t sock, struct httprequest *req)
           FD_ZERO(&input);
           FD_ZERO(&output);
           got = 0;
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#endif
           FD_SET(sock, &input);
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
           do {
             logmsg("Wait until readable");
             rc = select((int)sock + 1, &input, &output, NULL, &timeout);
@@ -1190,8 +1198,8 @@ retry:
     /* write to file as well */
     fwrite(buffer, 1, (size_t)written, dump);
 
-    count -= written;
-    buffer += written;
+    count -= (size_t)written;
+    buffer += (size_t)written;
 
     if(req->writedelay) {
       int msecs_left = req->writedelay;
@@ -1449,6 +1457,12 @@ static void http_connect(curl_socket_t *infdp,
     FD_ZERO(&input);
     FD_ZERO(&output);
 
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+/* 'error: conversion to 'long unsigned int' from 'int'
+   may change the sign of the result' in FD_SET() calls */
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#endif
     if((clientfd[DATA] == CURL_SOCKET_BAD) &&
        (serverfd[DATA] == CURL_SOCKET_BAD) &&
        poll_client_rd[CTRL] && poll_client_wr[CTRL] &&
@@ -1495,6 +1509,9 @@ static void http_connect(curl_socket_t *infdp,
         }
       }
     }
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
     if(got_exit_signal)
       break;
 
@@ -1513,8 +1530,15 @@ static void http_connect(curl_socket_t *infdp,
       /* ---------------------------------------------------------- */
 
       /* passive mode FTP may establish a secondary tunnel */
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#endif
       if((clientfd[DATA] == CURL_SOCKET_BAD) &&
          (serverfd[DATA] == CURL_SOCKET_BAD) && FD_ISSET(rootfd, &input)) {
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
         /* a new connection on listener socket (most likely from client) */
         curl_socket_t datafd = accept(rootfd, NULL, NULL);
         if(datafd != CURL_SOCKET_BAD) {
@@ -1588,8 +1612,15 @@ static void http_connect(curl_socket_t *infdp,
       for(i = 0; i <= max_tunnel_idx; i++) {
         size_t len;
         if(clientfd[i] != CURL_SOCKET_BAD) {
-          len = sizeof(readclient[i]) - tos[i];
+          len = sizeof(readclient[i]) - (size_t)tos[i];
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#endif
           if(len && FD_ISSET(clientfd[i], &input)) {
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
             /* read from client */
             rc = sread(clientfd[i], &readclient[i][tos[i]], len);
             if(rc <= 0) {
@@ -1600,14 +1631,21 @@ static void http_connect(curl_socket_t *infdp,
             else {
               logmsg("[%s] READ %zd bytes from client", data_or_ctrl(i), rc);
               logmsg("[%s] READ \"%s\"", data_or_ctrl(i),
-                     data_to_hex(&readclient[i][tos[i]], rc));
+                     data_to_hex(&readclient[i][tos[i]], (size_t)rc));
               tos[i] += rc;
             }
           }
         }
         if(serverfd[i] != CURL_SOCKET_BAD) {
-          len = sizeof(readserver[i])-toc[i];
+          len = sizeof(readserver[i]) - (size_t)toc[i];
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#endif
           if(len && FD_ISSET(serverfd[i], &input)) {
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
             /* read from server */
             rc = sread(serverfd[i], &readserver[i][toc[i]], len);
             if(rc <= 0) {
@@ -1618,13 +1656,20 @@ static void http_connect(curl_socket_t *infdp,
             else {
               logmsg("[%s] READ %zd bytes from server", data_or_ctrl(i), rc);
               logmsg("[%s] READ \"%s\"", data_or_ctrl(i),
-                     data_to_hex(&readserver[i][toc[i]], rc));
+                     data_to_hex(&readserver[i][toc[i]], (size_t)rc));
               toc[i] += rc;
             }
           }
         }
         if(clientfd[i] != CURL_SOCKET_BAD) {
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#endif
           if(toc[i] && FD_ISSET(clientfd[i], &output)) {
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
             /* write to client */
             rc = swrite(clientfd[i], readserver[i], toc[i]);
             if(rc <= 0) {
@@ -1636,15 +1681,23 @@ static void http_connect(curl_socket_t *infdp,
             else {
               logmsg("[%s] SENT %zd bytes to client", data_or_ctrl(i), rc);
               logmsg("[%s] SENT \"%s\"", data_or_ctrl(i),
-                     data_to_hex(readserver[i], rc));
+                     data_to_hex(readserver[i], (size_t)rc));
               if(toc[i] - rc)
-                memmove(&readserver[i][0], &readserver[i][rc], toc[i]-rc);
+                memmove(&readserver[i][0], &readserver[i][rc],
+                        (size_t)(toc[i] - rc));
               toc[i] -= rc;
             }
           }
         }
         if(serverfd[i] != CURL_SOCKET_BAD) {
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#endif
           if(tos[i] && FD_ISSET(serverfd[i], &output)) {
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
             /* write to server */
             rc = swrite(serverfd[i], readclient[i], tos[i]);
             if(rc <= 0) {
@@ -1656,9 +1709,10 @@ static void http_connect(curl_socket_t *infdp,
             else {
               logmsg("[%s] SENT %zd bytes to server", data_or_ctrl(i), rc);
               logmsg("[%s] SENT \"%s\"", data_or_ctrl(i),
-                     data_to_hex(readclient[i], rc));
+                     data_to_hex(readclient[i], (size_t)rc));
               if(tos[i] - rc)
-                memmove(&readclient[i][0], &readclient[i][rc], tos[i]-rc);
+                memmove(&readclient[i][0], &readclient[i][rc],
+                        (size_t)(tos[i] - rc));
               tos[i] -= rc;
             }
           }
@@ -2287,7 +2341,7 @@ int main(int argc, char *argv[])
         char *dst = (char *) (all_sockets + socket_idx);
         char *src = (char *) (all_sockets + socket_idx + 1);
         char *end = (char *) (all_sockets + num_sockets);
-        memmove(dst, src, end - src);
+        memmove(dst, src, (size_t)(end - src));
         num_sockets -= 1;
       }
     }
@@ -2301,7 +2355,14 @@ int main(int argc, char *argv[])
 
     for(socket_idx = 0; socket_idx < num_sockets; ++socket_idx) {
       /* Listen on all sockets */
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#endif
       FD_SET(all_sockets[socket_idx], &input);
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
       if(all_sockets[socket_idx] > maxfd)
         maxfd = all_sockets[socket_idx];
     }
@@ -2329,7 +2390,14 @@ int main(int argc, char *argv[])
     active = rc; /* a positive number */
 
     /* Check if the listening socket is ready to accept */
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#endif
     if(FD_ISSET(all_sockets[0], &input)) {
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
       /* Service all queued connections */
       curl_socket_t msgsock;
       do {
@@ -2346,7 +2414,14 @@ int main(int argc, char *argv[])
 
     /* Service all connections that are ready */
     for(socket_idx = 1; (socket_idx < num_sockets) && active; ++socket_idx) {
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#endif
       if(FD_ISSET(all_sockets[socket_idx], &input)) {
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
         active--;
         if(got_exit_signal)
           goto sws_cleanup;

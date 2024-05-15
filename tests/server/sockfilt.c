@@ -176,7 +176,7 @@ static ssize_t read_wincon(int fd, void *buf, size_t count)
     success = ReadFile(handle, buf, curlx_uztoul(count), &rcount, NULL);
   }
   if(success) {
-    return rcount;
+    return (ssize_t)rcount;
   }
 
   errno = (int)GetLastError();
@@ -211,7 +211,7 @@ static ssize_t write_wincon(int fd, const void *buf, size_t count)
     success = WriteFile(handle, buf, curlx_uztoul(count), &wcount, NULL);
   }
   if(success) {
-    return wcount;
+    return (ssize_t)wcount;
   }
 
   errno = (int)GetLastError();
@@ -235,7 +235,8 @@ static ssize_t fullread(int filedes, void *buffer, size_t nbytes)
 
   do {
     ssize_t rc = read(filedes,
-                      (unsigned char *)buffer + nread, nbytes - nread);
+                      (unsigned char *)buffer + nread,
+                      nbytes - (size_t)nread);
 
     if(got_exit_signal) {
       logmsg("signalled to die");
@@ -281,7 +282,7 @@ static ssize_t fullwrite(int filedes, const void *buffer, size_t nbytes)
 
   do {
     ssize_t wc = write(filedes, (const unsigned char *)buffer + nwrite,
-                       nbytes - nwrite);
+                       nbytes - (size_t)nwrite);
 
     if(got_exit_signal) {
       logmsg("signalled to die");
@@ -354,7 +355,7 @@ static void lograw(unsigned char *buffer, ssize_t len)
   unsigned char *ptr = buffer;
   char *optr = data;
   ssize_t width = 0;
-  int left = sizeof(data);
+  size_t left = sizeof(data);
 
   for(i = 0; i<len; i++) {
     switch(ptr[i]) {
@@ -411,7 +412,7 @@ static bool read_data_block(unsigned char *buffer, ssize_t maxlen,
   }
   logmsg("> %zd bytes data, server => client", *buffer_len);
 
-  if(!read_stdin(buffer, *buffer_len))
+  if(!read_stdin(buffer, (size_t)*buffer_len))
     return FALSE;
 
   lograw(buffer, *buffer_len);
@@ -664,7 +665,7 @@ static int select_ws(int nfds, fd_set *readfds, fd_set *writefds,
   }
 
   /* allocate internal array for the internal data */
-  data = calloc(nfds, sizeof(struct select_ws_data));
+  data = calloc((size_t)nfds, sizeof(struct select_ws_data));
   if(!data) {
     CloseHandle(abort);
     errno = ENOMEM;
@@ -672,7 +673,7 @@ static int select_ws(int nfds, fd_set *readfds, fd_set *writefds,
   }
 
   /* allocate internal array for the internal event handles */
-  handles = calloc(nfds + 1, sizeof(HANDLE));
+  handles = calloc((size_t)nfds + 1, sizeof(HANDLE));
   if(!handles) {
     CloseHandle(abort);
     free(data);
@@ -693,6 +694,10 @@ static int select_ws(int nfds, fd_set *readfds, fd_set *writefds,
     FD_ZERO(&writesock);
     FD_ZERO(&exceptsock);
 
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#endif
     if(FD_ISSET(wsasock, readfds)) {
       FD_SET(wsasock, &readsock);
       wsaevents.lNetworkEvents |= FD_READ|FD_ACCEPT|FD_CLOSE;
@@ -707,6 +712,9 @@ static int select_ws(int nfds, fd_set *readfds, fd_set *writefds,
       FD_SET(wsasock, &exceptsock);
       wsaevents.lNetworkEvents |= FD_OOB;
     }
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
 
     /* only wait for events for which we actually care */
     if(wsaevents.lNetworkEvents) {
@@ -754,12 +762,19 @@ static int select_ws(int nfds, fd_set *readfds, fd_set *writefds,
             if(select(fd + 1, &readsock, &writesock, &exceptsock, tv) == 1) {
               logmsg("[select_ws] socket %d is ready", fd);
               WSASetEvent(wsaevent);
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#endif
               if(FD_ISSET(wsasock, &readsock))
                 data[nfd].wsastate |= FD_READ;
               if(FD_ISSET(wsasock, &writesock))
                 data[nfd].wsastate |= FD_WRITE;
               if(FD_ISSET(wsasock, &exceptsock))
                 data[nfd].wsastate |= FD_OOB;
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
             }
             nfd++;
             nws++;
@@ -851,10 +866,17 @@ static int select_ws(int nfds, fd_set *readfds, fd_set *writefds,
       }
 
       /* check if the event has not been filtered using specific tests */
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#endif
       if(FD_ISSET(wsasock, readfds) || FD_ISSET(wsasock, writefds) ||
          FD_ISSET(wsasock, exceptfds)) {
         ret++;
       }
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
     }
     else {
       /* remove from all descriptor sets since this handle did not trigger */
@@ -865,12 +887,19 @@ static int select_ws(int nfds, fd_set *readfds, fd_set *writefds,
   }
 
   for(fd = 0; fd < nfds; fd++) {
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#endif
     if(FD_ISSET(fd, readfds))
       logmsg("[select_ws] %d is readable", fd);
     if(FD_ISSET(fd, writefds))
       logmsg("[select_ws] %d is writable", fd);
     if(FD_ISSET(fd, exceptfds))
       logmsg("[select_ws] %d is exceptional", fd);
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
   }
 
   for(i = 0; i < nws; i++) {
@@ -991,6 +1020,10 @@ static bool juggle(curl_socket_t *sockfdp,
   FD_ZERO(&fds_write);
   FD_ZERO(&fds_err);
 
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#endif
   FD_SET((curl_socket_t)fileno(stdin), &fds_read);
 
   switch(*mode) {
@@ -1041,6 +1074,9 @@ static bool juggle(curl_socket_t *sockfdp,
     break;
 
   } /* switch(*mode) */
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
 
 
   do {
@@ -1067,7 +1103,14 @@ static bool juggle(curl_socket_t *sockfdp,
     return TRUE;
 
 
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#endif
   if(FD_ISSET(fileno(stdin), &fds_read)) {
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
     ssize_t buffer_len;
     /* read from stdin, commands/data to be dealt with and possibly passed on
        to the socket
@@ -1104,7 +1147,7 @@ static bool juggle(curl_socket_t *sockfdp,
       msnprintf(data, sizeof(data), "PORT\n%04zx\n", buffer_len);
       if(!write_stdout(data, 10))
         return FALSE;
-      if(!write_stdout(buffer, buffer_len))
+      if(!write_stdout(buffer, (size_t)buffer_len))
         return FALSE;
     }
     else if(!memcmp("QUIT", buffer, 4)) {
@@ -1151,7 +1194,14 @@ static bool juggle(curl_socket_t *sockfdp,
   }
 
 
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#endif
   if((sockfd != CURL_SOCKET_BAD) && (FD_ISSET(sockfd, &fds_read)) ) {
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
     ssize_t nread_socket;
     if(*mode == PASSIVE_LISTEN) {
       /* there's no stream set up yet, this is an indication that there's a
@@ -1179,7 +1229,7 @@ static bool juggle(curl_socket_t *sockfdp,
       msnprintf(data, sizeof(data), "DATA\n%04zx\n", nread_socket);
       if(!write_stdout(data, 10))
         return FALSE;
-      if(!write_stdout(buffer, nread_socket))
+      if(!write_stdout(buffer, (size_t)nread_socket))
         return FALSE;
 
       logmsg("< %zd bytes data, client => server", nread_socket);

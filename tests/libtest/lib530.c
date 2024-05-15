@@ -64,7 +64,7 @@ static void removeFd(struct Sockets *sockets, curl_socket_t fd, int mention)
     if(sockets->sockets[i] == fd) {
       if(i < sockets->count - 1)
         memmove(&sockets->sockets[i], &sockets->sockets[i + 1],
-              sizeof(curl_socket_t) * (sockets->count - (i + 1)));
+              sizeof(curl_socket_t) * (size_t)(sockets->count - (i + 1)));
       --sockets->count;
     }
   }
@@ -93,7 +93,7 @@ static int addFd(struct Sockets *sockets, curl_socket_t fd, const char *what)
   }
   else if(sockets->count + 1 > sockets->max_count) {
     curl_socket_t *ptr = realloc(sockets->sockets, sizeof(curl_socket_t) *
-                                 (sockets->max_count + 20));
+                                 (size_t)(sockets->max_count + 20));
     if(!ptr)
       /* cleanup in test_cleanup */
       return 1;
@@ -220,7 +220,14 @@ static void updateFdSet(struct Sockets *sockets, fd_set* fdset,
 {
   int i;
   for(i = 0; i < sockets->count; ++i) {
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#endif
     FD_SET(sockets->sockets[i], fdset);
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
     if(*maxFd < sockets->sockets[i] + 1) {
       *maxFd = sockets->sockets[i] + 1;
     }
@@ -249,7 +256,14 @@ static int checkFdSet(CURLM *curl,
   int i;
   int result = 0;
   for(i = 0; i < sockets->count; ++i) {
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#endif
     if(FD_ISSET(sockets->sockets[i], fdset)) {
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
       result = socket_action(curl, sockets->sockets[i], evBitmask, name);
       if(result)
         break;

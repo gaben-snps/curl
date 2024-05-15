@@ -249,10 +249,10 @@ static void loghex(unsigned char *buffer, ssize_t len)
   unsigned char *ptr = buffer;
   char *optr = data;
   ssize_t width = 0;
-  int left = sizeof(data);
+  ssize_t left = sizeof(data);
 
   for(i = 0; i<len && (left >= 0); i++) {
-    msnprintf(optr, left, "%02x", ptr[i]);
+    msnprintf(optr, (size_t)left, "%02x", ptr[i]);
     width += 2;
     optr += 2;
     left -= 2;
@@ -651,7 +651,14 @@ static int tunnel(struct perclient *cp, fd_set *fds)
   ssize_t nread;
   ssize_t nwrite;
   char buffer[512];
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#endif
   if(FD_ISSET(cp->clientfd, fds)) {
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
     /* read from client, send to remote */
     nread = recv(cp->clientfd, buffer, sizeof(buffer), 0);
     if(nread > 0) {
@@ -659,12 +666,19 @@ static int tunnel(struct perclient *cp, fd_set *fds)
                     (SEND_TYPE_ARG3)nread, 0);
       if(nwrite != nread)
         return 1;
-      cp->fromclient += nwrite;
+      cp->fromclient += (size_t)nwrite;
     }
     else
       return 1;
   }
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#endif
   if(FD_ISSET(cp->remotefd, fds)) {
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
     /* read from remote, send to client */
     nread = recv(cp->remotefd, buffer, sizeof(buffer), 0);
     if(nread > 0) {
@@ -672,7 +686,7 @@ static int tunnel(struct perclient *cp, fd_set *fds)
                     (SEND_TYPE_ARG3)nread, 0);
       if(nwrite != nread)
         return 1;
-      cp->fromremote += nwrite;
+      cp->fromremote += (size_t)nwrite;
     }
     else
       return 1;
@@ -719,6 +733,10 @@ static bool incoming(curl_socket_t listenfd)
     FD_ZERO(&fds_write);
     FD_ZERO(&fds_err);
 
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#endif
     /* there's always a socket to wait for */
     FD_SET(sockfd, &fds_read);
 
@@ -734,6 +752,9 @@ static bool incoming(curl_socket_t listenfd)
           maxfd = (int)fd;
       }
     }
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
 
     do {
       /* select() blocking behavior call on blocking descriptors please */
@@ -750,7 +771,14 @@ static bool incoming(curl_socket_t listenfd)
       return FALSE;
     }
 
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#endif
     if((clients < 2) && FD_ISSET(sockfd, &fds_read)) {
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
       curl_socket_t newfd = accept(sockfd, NULL, NULL);
       if(CURL_SOCKET_BAD == newfd) {
         error = SOCKERRNO;
