@@ -300,6 +300,7 @@ typedef enum {
   C_SSL_NO_REVOKE,
   C_SSL_REQD,
   C_SSL_REVOKE_BEST_EFFORT,
+  C_SSL_NO_VERIFY_HOST,
   C_SSLV2,
   C_SSLV3,
   C_STDERR,
@@ -580,6 +581,7 @@ static const struct LongShort aliases[]= {
   {"ssl-allow-beast",            ARG_BOOL, ' ', C_SSL_ALLOW_BEAST},
   {"ssl-auto-client-cert",       ARG_BOOL, ' ', C_SSL_AUTO_CLIENT_CERT},
   {"ssl-no-revoke",              ARG_BOOL, ' ', C_SSL_NO_REVOKE},
+  {"ssl-no-verify-host",         ARG_BOOL, ' ', C_SSL_NO_VERIFY_HOST},
   {"ssl-reqd",                   ARG_BOOL, ' ', C_SSL_REQD},
   {"ssl-revoke-best-effort",     ARG_BOOL, ' ', C_SSL_REVOKE_BEST_EFFORT},
   {"sslv2",                      ARG_NONE, '2', C_SSLV2},
@@ -2207,6 +2209,10 @@ ParameterError getparameter(const char *flag, /* f or -long-flag */
     case C_SSL_REVOKE_BEST_EFFORT: /* --ssl-revoke-best-effort */
       if(feature_ssl)
         config->ssl_revoke_best_effort = TRUE;
+      break;
+    case C_SSL_NO_VERIFY_HOST:
+      if(feature_ssl)
+        config->ssl_no_verify_host = toggle;
       break;
     case C_TCP_FASTOPEN: /* --tcp-fastopen */
       config->tcp_fastopen = TRUE;

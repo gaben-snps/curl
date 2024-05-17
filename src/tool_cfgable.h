@@ -277,6 +277,8 @@ struct OperationConfig {
                                      from user callbacks */
   bool synthetic_error;           /* if TRUE, this is tool-internal error */
   bool ssh_compression;           /* enable/disable SSH compression */
+  bool ssl_no_verify_host;        /* Disable verify peer certificate host */
+
   long happy_eyeballs_timeout_ms; /* happy eyeballs timeout in milliseconds.
                                      0 is valid. default: CURL_HET_DEFAULT. */
   bool haproxy_protocol;          /* whether to send HAProxy protocol v1 */
