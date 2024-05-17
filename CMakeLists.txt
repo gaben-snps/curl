@@ -1563,23 +1563,9 @@ set(generated_dir "${CMAKE_CURRENT_BINARY_DIR}/generated")
 set(project_config "${generated_dir}/${PROJECT_NAME}Config.cmake")
 set(version_config "${generated_dir}/${PROJECT_NAME}ConfigVersion.cmake")
 
-if(NOT DEFINED BUILD_TESTING)
-  set(_implicit_build_testing ON)
-endif()
-
 cmake_dependent_option(BUILD_TESTING "Build tests"
   ON "PERL_FOUND;NOT CURL_DISABLE_TESTS"
   OFF)
-
-if(BUILD_TESTING AND ENABLE_CURLDEBUG AND
-   NOT CMAKE_BUILD_TYPE STREQUAL "Debug" AND
-   NOT ENABLE_DEBUGBUILD AND
-   NOT CMAKE_C_FLAGS MATCHES "-DDEBUGBUILD")
-  if(NOT _implicit_build_testing)  # warn when tests were explicitly enabled
-    message(WARNING "Building tests with TrackMemory requires ENABLE_DEBUG=ON with Debug configuration, or -DDEBUGBUILD set manually. Will not be building tests.")
-  endif()
-  set(BUILD_TESTING OFF)
-endif()
 
 if(HAVE_MANUAL_TOOLS)
   add_subdirectory(docs)
