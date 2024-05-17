@@ -2197,6 +2197,9 @@ static CURLcode single_transfer(struct GlobalConfig *global,
           my_setopt_str(curl, CURLOPT_ECH, config->ech_config);
 #endif
 
+        /* new in 8.9.0 */
+        my_setopt_str(curl, CURLOPT_INTERFACE_IP, config->iface_ip);
+
         /* initialize retry vars for loop below */
         per->retry_sleep_default = (config->retry_delay) ?
           config->retry_delay*1000L : RETRY_SLEEP_DEFAULT; /* ms */

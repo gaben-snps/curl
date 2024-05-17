@@ -283,6 +283,7 @@ CURLWARNING(_curl_easy_getinfo_err_curl_off_t,
    (option) == CURLOPT_HSTS ||                                                \
    (option) == CURLOPT_HAPROXY_CLIENT_IP ||                                   \
    (option) == CURLOPT_INTERFACE ||                                           \
+   (option) == CURLOPT_INTERFACE_IP ||                                        \
    (option) == CURLOPT_ISSUERCERT ||                                          \
    (option) == CURLOPT_KEYPASSWD ||                                           \
    (option) == CURLOPT_KRBLEVEL ||                                            \

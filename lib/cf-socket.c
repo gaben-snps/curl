@@ -415,6 +415,7 @@ static CURLcode bindlocal(struct Curl_easy *data, struct connectdata *conn,
   /* how many port numbers to try to bind to, increasing one at a time */
   int portnum = data->set.localportrange;
   const char *dev = data->set.str[STRING_DEVICE];
+  const char *dev_ip = data->set.str[STRING_DEVICE_IP];
   int error;
 #ifdef IP_BIND_ADDRESS_NO_PORT
   int on = 1;
@@ -437,6 +438,7 @@ static CURLcode bindlocal(struct Curl_easy *data, struct connectdata *conn,
     int done = 0; /* -1 for error, 1 for address found */
     bool is_interface = FALSE;
     bool is_host = FALSE;
+    if2ip_result_t if2ip_result = IF2IP_FOUND;
     static const char *if_prefix = "if!";
     static const char *host_prefix = "host!";
 
@@ -447,6 +449,11 @@ static CURLcode bindlocal(struct Curl_easy *data, struct connectdata *conn,
     else if(strncmp(host_prefix, dev, strlen(host_prefix)) == 0) {
       dev += strlen(host_prefix);
       is_host = TRUE;
+    }
+
+    if(dev_ip && strlen(dev_ip)<255) {
+      strncpy(myhost, dev_ip, sizeof(myhost)-1);
+      myhost[sizeof(myhost)-1] = '\0';
     }
 
     /* interface */
@@ -469,16 +476,20 @@ static CURLcode bindlocal(struct Curl_easy *data, struct connectdata *conn,
          * succeeds it means the parameter was a valid interface and not an IP
          * address. Return immediately.
          */
-        infof(data, "socket successfully bound to interface '%s'", dev);
-        return CURLE_OK;
+        if(!*myhost) {
+          infof(data, "socket successfully bound to interface '%s'", dev);
+          return CURLE_OK;
+        }
       }
 #endif
-
-      switch(Curl_if2ip(af,
+      if(!*myhost) { /* IP not provided, resolve it */
+        if2ip_result = Curl_if2ip(af,
 #ifdef USE_IPV6
                         scope, conn->scope_id,
 #endif
-                        dev, myhost, sizeof(myhost))) {
+                        dev, myhost, sizeof(myhost));
+      }
+      switch(if2ip_result) {
         case IF2IP_NOT_FOUND:
           if(is_interface) {
             /* Do not fall back to treating it as a host name */

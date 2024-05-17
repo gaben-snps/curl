@@ -1879,6 +1879,14 @@ CURLcode Curl_vsetopt(struct Curl_easy *data, CURLoption option, va_list param)
      */
     result = Curl_setstropt(&data->set.str[STRING_DEVICE],
                             va_arg(param, char *));
+
+    break;
+  case CURLOPT_INTERFACE_IP:
+    /*
+     * Along with with CURLOPT_INTERFACE, set IP address to bind to.
+     */
+    result = Curl_setstropt(&data->set.str[STRING_DEVICE_IP],
+                            va_arg(param, char *));
     break;
 #ifndef CURL_DISABLE_BINDLOCAL
   case CURLOPT_LOCALPORT:
