@@ -328,6 +328,7 @@ typedef enum {
   C_TRACE_CONFIG,
   C_TRACE_IDS,
   C_TRACE_TIME,
+  C_TYPE_OF_SERVICE,
   C_UNIX_SOCKET,
   C_UPLOAD_FILE,
   C_URL,
@@ -610,6 +611,7 @@ static const struct LongShort aliases[]= {
   {"trace-config",               ARG_STRG, ' ', C_TRACE_CONFIG},
   {"trace-ids",                  ARG_BOOL, ' ', C_TRACE_IDS},
   {"trace-time",                 ARG_BOOL, ' ', C_TRACE_TIME},
+  {"type-of-service",            ARG_STRG, ' ', C_TYPE_OF_SERVICE},
   {"unix-socket",                ARG_FILE, ' ', C_UNIX_SOCKET},
   {"upload-file",                ARG_FILE, 'T', C_UPLOAD_FILE},
   {"url",                        ARG_STRG, ' ', C_URL},
@@ -1025,6 +1027,49 @@ static const struct LongShort *single(char letter)
     singles_done = TRUE;
   }
   return singles[letter - ' '];
+}
+
+struct TOSEntry {
+  const char *name;
+  unsigned char value;
+};
+
+static const struct TOSEntry tos_entries[]= {
+  {"AF11", 0x28},
+  {"AF12", 0x30},
+  {"AF13", 0x38},
+  {"AF21", 0x48},
+  {"AF22", 0x50},
+  {"AF23", 0x58},
+  {"AF31", 0x68},
+  {"AF32", 0x70},
+  {"AF33", 0x78},
+  {"AF41", 0x88},
+  {"AF42", 0x90},
+  {"AF43", 0x98},
+  {"CS0", 0x00},
+  {"CS1", 0x20},
+  {"CS2", 0x40},
+  {"CS3", 0x60},
+  {"CS4", 0x80},
+  {"CS5", 0xa0},
+  {"CS6", 0xc0},
+  {"CS7", 0xe0},
+  {"ECT0", 0x02},
+  {"ECT1", 0x01},
+  {"EF", 0xb8},
+  {"LOWCOST", 0x02},
+  {"LOWDELAY", 0x10},
+  {"MINCOST", 0x02},
+  {"RELIABILITY", 0x04},
+  {"THROUGHPUT", 0x08}
+};
+
+static int find_tos(const void *a, const void *b)
+{
+  const struct TOSEntry *aa = a;
+  const struct TOSEntry *bb = b;
+  return strcmp(aa->name, bb->name);
 }
 
 #define MAX_QUERY_LEN 100000 /* larger is not likely to ever work */
@@ -1630,6 +1675,16 @@ ParameterError getparameter(const char *flag, /* f or -long-flag */
     case C_TCP_NODELAY: /* --tcp-nodelay */
       config->tcp_nodelay = toggle;
       break;
+    case C_TYPE_OF_SERVICE: { /* --type-of-service */
+      const struct TOSEntry *entry = bsearch(
+        &nextarg, tos_entries, sizeof(tos_entries)/sizeof(*tos_entries),
+        sizeof(*tos_entries), find_tos);
+      if(entry)
+        config->ip_tos = entry->value;
+      else /* numeric tos value */
+        err = str2unummax(&config->ip_tos, nextarg, 0xFF);
+      break;
+    }
     case C_PROXY_DIGEST: /* --proxy-digest */
       config->proxydigest = toggle;
       break;
