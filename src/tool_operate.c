@@ -1736,9 +1736,9 @@ static CURLcode single_transfer(struct GlobalConfig *global,
             my_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
           }
           else {
-            my_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
-            /* libcurl default is strict verifyhost -> 2L   */
-            /* my_setopt(curl, CURLOPT_SSL_VERIFYHOST, 2L); */
+            /* libcurl default is strict verifyhost -> 1L, verifypeer -> 1L */
+            /* my_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L); */
+            /* my_setopt(curl, CURLOPT_SSL_VERIFYHOST, 1L); */
           }
 
           if(config->doh_insecure_ok) {
