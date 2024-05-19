@@ -2712,6 +2712,7 @@ CURLcode operate(struct GlobalConfig *global, int argc, argv_item_t argv[])
 {
   CURLcode result = CURLE_OK;
   char *first_arg = argc > 1 ? curlx_convert_tchar_to_UTF8(argv[1]) : NULL;
+  char *curlrc = getenv("CURL_RC");
 
 #ifdef HAVE_SETLOCALE
   /* Override locale for number parsing (only) */
@@ -2719,14 +2720,26 @@ CURLcode operate(struct GlobalConfig *global, int argc, argv_item_t argv[])
   setlocale(LC_NUMERIC, "C");
 #endif
 
+  if(getenv("CURL_CONFIG_DEBUG")) {
+    configdebug = TRUE;
+  }
   /* Parse .curlrc if necessary */
   if((argc == 1) ||
      (first_arg && strncmp(first_arg, "-q", 2) &&
-      !curl_strequal(first_arg, "--disable"))) {
-    parseconfig(NULL, global); /* ignore possible failure */
+      strcmp(first_arg, "--disable"))) {
+    if(first_arg && (!strncmp(first_arg, "-v", 2) ||
+                     !strcmp(first_arg, "--verbose"))) {
+      configdebug = TRUE;
+    }
+    if(parseconfig(curlrc, global)) {
+      if(curlrc)
+        errorf(global,
+               "The config file provided in CURL_RC triggered an error");
+      result = CURLE_FAILED_INIT;
+    }
 
     /* If we had no arguments then make sure a url was specified in .curlrc */
-    if((argc < 2) && (!global->first->url_list)) {
+    else if((argc < 2) && (!global->first->url_list)) {
       helpf(tool_stderr, NULL);
       result = CURLE_FAILED_INIT;
     }
