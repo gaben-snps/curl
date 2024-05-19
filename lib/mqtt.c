@@ -623,10 +623,12 @@ static CURLcode mqtt_read_publish(struct Curl_easy *data, bool *done)
   CURLcode result = CURLE_OK;
   struct connectdata *conn = data->conn;
   ssize_t nread;
+  ssize_t nprocessed = 0;
   size_t remlen;
   struct mqtt_conn *mqtt = &conn->proto.mqtt;
   struct MQTT *mq = data->req.p.mqtt;
   unsigned char packet;
+  ssize_t topiclen;
 
   switch(mqtt->state) {
 MQTT_SUBACK_COMING:
@@ -691,10 +693,52 @@ MQTT_SUBACK_COMING:
       goto end;
     }
 
-    /* if QoS is set, message contains packet id */
-    result = Curl_client_write(data, CLIENTWRITE_BODY, buffer, nread);
+    /* read the variable header */
+
+    /* read topic */
+    if(nread < 2) {
+      failf(data, "packet too short");
+      result = CURLE_WEIRD_SERVER_REPLY;
+      goto end;
+    }
+    nprocessed += 2;
+    topiclen = (unsigned char)buffer[0] << 8 | (unsigned char)buffer[1];
+    if(nread < nprocessed + topiclen) {
+      failf(data, "topic length longer than packet");
+      result = CURLE_WEIRD_SERVER_REPLY;
+      goto end;
+    }
+    result = Curl_client_write(data, CLIENTWRITE_HEADER,
+                               &buffer[nprocessed], topiclen);
     if(result)
       goto end;
+    nprocessed += topiclen;
+
+    /* if QoS is set, message contains packet id */
+    if(mq->firstbyte & 0x06) {
+      if(nread < nprocessed + 2) {
+        failf(data, "packet too short");
+        result = CURLE_WEIRD_SERVER_REPLY;
+        goto end;
+      }
+      result = Curl_client_write(data, CLIENTWRITE_HEADER,
+                                 &buffer[nprocessed], 2);
+      if(result)
+        goto end;
+      nprocessed += 2;
+    }
+
+    /* read payload */
+    if(nread - nprocessed > 0) {
+      result = Curl_client_write(data, CLIENTWRITE_BODY,
+                               &buffer[nprocessed], nread - nprocessed);
+      if(result)
+        goto end;
+    }
+    else {
+      /* zero length payload are valid in MQTT */
+      infof(data, "Zero length payload");
+    }
 
     mq->npacket -= nread;
     if(!mq->npacket)
