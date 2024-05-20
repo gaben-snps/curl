@@ -415,7 +415,6 @@ static CURLcode bindlocal(struct Curl_easy *data, struct connectdata *conn,
   /* how many port numbers to try to bind to, increasing one at a time */
   int portnum = data->set.localportrange;
   const char *dev = data->set.str[STRING_DEVICE];
-  const char *dev_ip = data->set.str[STRING_DEVICE_IP];
   int error;
 #ifdef IP_BIND_ADDRESS_NO_PORT
   int on = 1;
@@ -435,29 +434,37 @@ static CURLcode bindlocal(struct Curl_easy *data, struct connectdata *conn,
 
   if(dev && (strlen(dev)<255) ) {
     char myhost[256] = "";
+    char host_input[256] = "";
+    char iface[256] = "";
     int done = 0; /* -1 for error, 1 for address found */
-    bool is_interface = FALSE;
-    bool is_host = FALSE;
-    if2ip_result_t if2ip_result = IF2IP_FOUND;
+    if2ip_result_t if2ip_result = IF2IP_NOT_FOUND;
     static const char *if_prefix = "if!";
     static const char *host_prefix = "host!";
+    static const char *if_host_prefix = "ifhost!";
 
     if(strncmp(if_prefix, dev, strlen(if_prefix)) == 0) {
       dev += strlen(if_prefix);
-      is_interface = TRUE;
+      strcpy(iface, dev);
     }
     else if(strncmp(host_prefix, dev, strlen(host_prefix)) == 0) {
       dev += strlen(host_prefix);
-      is_host = TRUE;
+      strcpy(host_input, dev);
     }
-
-    if(dev_ip && strlen(dev_ip)<255) {
-      strncpy(myhost, dev_ip, sizeof(myhost)-1);
-      myhost[sizeof(myhost)-1] = '\0';
+    else if(strncmp(if_host_prefix, dev, strlen(if_host_prefix)) == 0) {
+      const char *host_part;
+      dev += strlen(if_host_prefix);
+      host_part = strchr(dev, '!');
+      if(host_part) {
+        strncpy(iface, dev, host_part - dev);
+        iface[host_part - dev] = '\0';
+        dev = iface;
+        ++host_part;
+        strcpy(host_input, host_part);
+      }
     }
 
     /* interface */
-    if(!is_host) {
+    if(*iface || !*host_input) {
 #ifdef SO_BINDTODEVICE
       /*
        * This binds the local socket to a particular interface. This will
@@ -476,13 +483,18 @@ static CURLcode bindlocal(struct Curl_easy *data, struct connectdata *conn,
          * succeeds it means the parameter was a valid interface and not an IP
          * address. Return immediately.
          */
-        if(!*myhost) {
+        if(!*host_input) {
           infof(data, "socket successfully bound to interface '%s'", dev);
           return CURLE_OK;
         }
       }
 #endif
-      if(!*myhost) { /* IP not provided, resolve it */
+      if(*host_input) {
+        dev = host_input; /* from this point on, the device no longer matters
+                              and we use dev for host binding. */
+      }
+      else {
+        /* Discover IP from input device, then bind to it */
         if2ip_result = Curl_if2ip(af,
 #ifdef USE_IPV6
                         scope, conn->scope_id,
@@ -491,7 +503,7 @@ static CURLcode bindlocal(struct Curl_easy *data, struct connectdata *conn,
       }
       switch(if2ip_result) {
         case IF2IP_NOT_FOUND:
-          if(is_interface) {
+          if(*iface && !*host_input) {
             /* Do not fall back to treating it as a host name */
             failf(data, "Couldn't bind to interface '%s'", dev);
             return CURLE_INTERFACE_FAILED;
@@ -501,7 +513,7 @@ static CURLcode bindlocal(struct Curl_easy *data, struct connectdata *conn,
           /* Signal the caller to try another address family if available */
           return CURLE_UNSUPPORTED_PROTOCOL;
         case IF2IP_FOUND:
-          is_interface = TRUE;
+          strcpy(iface, dev);
           /*
            * We now have the numerical IP address in the 'myhost' buffer
            */
@@ -511,7 +523,7 @@ static CURLcode bindlocal(struct Curl_easy *data, struct connectdata *conn,
           break;
       }
     }
-    if(!is_interface) {
+    if(!*iface || *host_input) {
       /*
        * This was not an interface, resolve the name as a host name
        * or IP number

@@ -173,7 +173,6 @@ typedef enum {
   C_INCLUDE,
   C_INSECURE,
   C_INTERFACE,
-  C_INTERFACE_IP,
   C_IPFS_GATEWAY,
   C_IPV4,
   C_IPV6,
@@ -456,7 +455,6 @@ static const struct LongShort aliases[]= {
   {"include",                    ARG_BOOL, 'i', C_INCLUDE},
   {"insecure",                   ARG_BOOL, 'k', C_INSECURE},
   {"interface",                  ARG_STRG, ' ', C_INTERFACE},
-  {"interface-ip",               ARG_STRG, ' ', C_INTERFACE_IP},
   {"ipfs-gateway",               ARG_STRG, ' ', C_IPFS_GATEWAY},
   {"ipv4",                       ARG_NONE, '4', C_IPV4},
   {"ipv6",                       ARG_NONE, '6', C_IPV6},
@@ -1540,10 +1538,6 @@ ParameterError getparameter(const char *flag, /* f or -long-flag */
     case C_INTERFACE: /* --interface */
       /* interface */
       err = getstr(&config->iface, nextarg, DENY_BLANK);
-      break;
-    case C_INTERFACE_IP:
-      /* Audiocodes - --interface-ip */
-      err = getstr(&config->iface_ip, nextarg, DENY_BLANK);
       break;
     case C_KRB: /* --krb */
       /* kerberos level string */

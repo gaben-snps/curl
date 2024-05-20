@@ -2213,9 +2213,6 @@ typedef enum {
   /* set ECH configuration  */
   CURLOPT(CURLOPT_ECH, CURLOPTTYPE_STRINGPOINT, 325),
 
-  /* Set the outbound IP address when binding to a network interface */
-  CURLOPT(CURLOPT_INTERFACE_IP, CURLOPTTYPE_STRINGPOINT, 326),
-
   CURLOPT_LASTENTRY /* the last unused */
 } CURLoption;
 
