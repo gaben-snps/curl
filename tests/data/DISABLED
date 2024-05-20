@@ -84,7 +84,10 @@
 # response body seem not to be handled by hyper
 2307
 %endif
+# The following 2 tests depend on badssl certificate, which can only be
+# validated if the system has up-to-date CA certificates.
 2043
+2088
 # The CRL test (313) doesn't work with rustls because rustls doesn't support
 # CRLs.
 # Tests that rely on connecting to an IP address over TLS don't work because
