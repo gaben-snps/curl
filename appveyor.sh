@@ -35,12 +35,13 @@ else
 fi
 openssl_root="$(cygpath -u "${openssl_root_win}")"
 
+[ -z "${TESTBUILD:-}" ] && TESTBUILD="${TESTRUN}"
+
 if [ "${BUILD_SYSTEM}" = 'CMake' ]; then
   options=''
   [[ "${TARGET:-}" = *'ARM64'* ]] && SKIP_RUN='ARM64 architecture'
   [ "${OPENSSL}" = 'ON' ] && options+=" -DOPENSSL_ROOT_DIR=${openssl_root_win}"
   [ -n "${CURLDEBUG:-}" ] && options+=" -DENABLE_CURLDEBUG=${CURLDEBUG}"
-  [ -z "${TESTBUILD:-}" ] && TESTBUILD="${TESTRUN}"
   [ "${PRJ_CFG}" = 'Debug' ] && options+=' -DCMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG='
   [ "${PRJ_CFG}" = 'Release' ] && options+=' -DCMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE='
   [[ "${PRJ_GEN}" = *'Visual Studio'* ]] && options+=' -DCMAKE_VS_GLOBALS=TrackFileAccess=false'
