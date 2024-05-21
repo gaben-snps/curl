@@ -167,6 +167,7 @@ jobs:
             mingw-w64-${{ matrix.env }}-cc
             mingw-w64-${{ matrix.env }}-${{ matrix.build }} make
             mingw-w64-${{ matrix.env }}-openssl
+            mingw-w64-${{ matrix.env }}-libssh2
 
       - name: 'autotools configure'
         if: ${{ matrix.build == 'autotools' }}
