@@ -43,7 +43,7 @@ if [ "${BUILD_SYSTEM}" = 'CMake' ]; then
   [ "${OPENSSL}" = 'ON' ] && options+=" -DOPENSSL_ROOT_DIR=${openssl_root_win}"
   if [ -n "${CURLDEBUG:-}" ]; then
     options+=" -DENABLE_CURLDEBUG=${CURLDEBUG}"
-    [ "${CURLDEBUG}" = 'ON'] && TESTING='ON'  # enable building tests
+    [ "${CURLDEBUG}" = 'ON' ] && TESTING='ON'  # enable building tests
   fi
   [ "${PRJ_CFG}" = 'Debug' ] && options+=' -DCMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG='
   [ "${PRJ_CFG}" = 'Release' ] && options+=' -DCMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE='
