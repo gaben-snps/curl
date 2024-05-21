@@ -35,10 +35,16 @@ else
 fi
 openssl_root="$(cygpath -u "${openssl_root_win}")"
 
+run_tests="${TESTING}"
+
 if [ "${BUILD_SYSTEM}" = 'CMake' ]; then
   options=''
   [[ "${TARGET:-}" = *'ARM64'* ]] && SKIP_RUN='ARM64 architecture'
   [ "${OPENSSL}" = 'ON' ] && options+=" -DOPENSSL_ROOT_DIR=${openssl_root_win}"
+  if [ "${CURLDEBUG:-}" = 'ON' ]; then
+    options+=' -DENABLE_CURLDEBUG=ON'
+    TESTING='ON'  # enable building tests
+  fi
   [ "${PRJ_CFG}" = 'Debug' ] && options+=' -DCMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG='
   [ "${PRJ_CFG}" = 'Release' ] && options+=' -DCMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE='
   [[ "${PRJ_GEN}" = *'Visual Studio'* ]] && options+=' -DCMAKE_VS_GLOBALS=TrackFileAccess=false'
@@ -117,9 +123,15 @@ if false; then
   done
 fi
 
-# test
+# build tests
 
-if [ "${TESTING}" = 'ON' ]; then
+if [ "${BUILD_SYSTEM}" = 'CMake' ] && [ "${TESTING}" = 'ON' ]; then
+  cmake --build _bld --config "${PRJ_CFG}" --parallel 2 --target testdeps
+fi
+
+# run tests
+
+if [ "${run_tests}" = 'ON' ]; then
   export TFLAGS=''
   if [ -x "$(cygpath -u "${WINDIR}/System32/curl.exe")" ]; then
     TFLAGS+=" -ac $(cygpath -u "${WINDIR}/System32/curl.exe")"
@@ -128,7 +140,6 @@ if [ "${TESTING}" = 'ON' ]; then
   fi
   TFLAGS+=" ${DISABLED_TESTS:-}"
   if [ "${BUILD_SYSTEM}" = 'CMake' ]; then
-    cmake --build _bld --config "${PRJ_CFG}" --parallel 2 --target testdeps
     ls _bld/lib/*.dll >/dev/null 2>&1 && cp -f -p _bld/lib/*.dll _bld/tests/libtest/
     cmake --build _bld --config "${PRJ_CFG}" --target test-ci
   else
