@@ -171,6 +171,8 @@ endif()
 
 include(CurlSymbolHiding)
 
+message(STATUS "||${ENABLE_DEBUG}|${ENABLE_CURLDEBUG}|${CMAKE_CONFIG_TYPE}|${CURL_HIDDEN_SYMBOLS}||")
+
 option(CURL_ENABLE_EXPORT_TARGET "to enable cmake export target" ON)
 mark_as_advanced(CURL_ENABLE_EXPORT_TARGET)
 
