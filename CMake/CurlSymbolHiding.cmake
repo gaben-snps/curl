@@ -28,7 +28,7 @@ mark_as_advanced(CURL_HIDDEN_SYMBOLS)
 
 if(WIN32 AND (ENABLE_DEBUG OR ENABLE_CURLDEBUG))
   # We need to export internal debug functions,
-  # e.g. curl_easy_perform_ev() and curl_dbg_*(),
+  # e.g. curl_easy_perform_ev() or curl_dbg_*(),
   # so disable symbol hiding for debug builds and for memory tracking.
   set(CURL_HIDDEN_SYMBOLS OFF)
 endif()
