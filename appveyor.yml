@@ -49,7 +49,7 @@ environment:
       ENABLE_UNICODE: 'OFF'
       HTTP_ONLY: 'OFF'
       SHARED: 'ON'
-      TESTING: 'OFF'
+      TESTRUN: 'OFF'
       DISABLED_TESTS: ''
     - job_name: 'CMake, VS2008, Debug, x86, Schannel, Build-only'
       APPVEYOR_BUILD_WORKER_IMAGE: 'Visual Studio 2015'
@@ -60,7 +60,7 @@ environment:
       ENABLE_UNICODE: 'OFF'
       HTTP_ONLY: 'OFF'
       SHARED: 'ON'
-      TESTING: 'OFF'
+      TESTRUN: 'OFF'
       DISABLED_TESTS: ''
     - job_name: 'CMake, VS2022, Release, x64, OpenSSL 3.2, WebSockets, Build-only'
       APPVEYOR_BUILD_WORKER_IMAGE: 'Visual Studio 2022'
@@ -73,7 +73,7 @@ environment:
       ENABLE_UNICODE: 'OFF'
       HTTP_ONLY: 'OFF'
       SHARED: 'ON'
-      TESTING: 'OFF'
+      TESTRUN: 'OFF'
       DISABLED_TESTS: ''
       WEBSOCKETS: 'ON'
     - job_name: 'CMake, VS2022, Release, arm64, Schannel, Static, Build-only'
@@ -85,7 +85,8 @@ environment:
       SCHANNEL: 'ON'
       ENABLE_UNICODE: 'OFF'
       HTTP_ONLY: 'OFF'
-      TESTING: 'OFF'
+      TESTRUN: 'OFF'
+      TESTBUILD: 'ON'
       DISABLED_TESTS: ''
       DEBUG: 'OFF'
       CURLDEBUG: 'ON'
@@ -97,7 +98,7 @@ environment:
       SCHANNEL: 'ON'
       ENABLE_UNICODE: 'OFF'
       HTTP_ONLY: 'OFF'
-      TESTING: 'OFF'
+      TESTRUN: 'OFF'
       DISABLED_TESTS: ''
     - job_name: 'CMake, VS2022, Debug, x64, Schannel, Static, Unicode'
       APPVEYOR_BUILD_WORKER_IMAGE: 'Visual Studio 2022'
@@ -108,7 +109,7 @@ environment:
       SCHANNEL: 'ON'
       ENABLE_UNICODE: 'ON'
       HTTP_ONLY: 'OFF'
-      TESTING: 'ON'
+      TESTRUN: 'ON'
       DISABLED_TESTS: '!1139 !1501 !1177 !1477'
     - job_name: 'CMake, VS2022, Release, x64, Schannel, Shared, Unicode, DEBUGBULID, no-CURLDEBUG'
       APPVEYOR_BUILD_WORKER_IMAGE: 'Visual Studio 2022'
@@ -120,7 +121,7 @@ environment:
       ENABLE_UNICODE: 'ON'
       HTTP_ONLY: 'OFF'
       SHARED: 'ON'
-      TESTING: 'OFF'
+      TESTRUN: 'OFF'
       DISABLED_TESTS: ''
       CURLDEBUG: 'OFF'
     - job_name: 'CMake, VS2022, Debug, x64, no SSL, Static'
@@ -132,7 +133,7 @@ environment:
       SCHANNEL: 'OFF'
       ENABLE_UNICODE: 'OFF'
       HTTP_ONLY: 'OFF'
-      TESTING: 'ON'
+      TESTRUN: 'ON'
       DISABLED_TESTS: '!1139 !1501 !1177 !1477'
     - job_name: 'CMake, VS2022, Debug, x64, no SSL, Static, HTTP only'
       APPVEYOR_BUILD_WORKER_IMAGE: 'Visual Studio 2022'
@@ -143,7 +144,7 @@ environment:
       SCHANNEL: 'OFF'
       ENABLE_UNICODE: 'OFF'
       HTTP_ONLY: 'ON'
-      TESTING: 'ON'
+      TESTRUN: 'ON'
       DISABLED_TESTS: '!1139 !1501 !1177 !1477'
 
     # generated CMake-based MSYS Makefiles builds (mingw cross-compiling)
@@ -156,7 +157,7 @@ environment:
       SCHANNEL: 'ON'
       ENABLE_UNICODE: 'ON'
       HTTP_ONLY: 'OFF'
-      TESTING: 'ON'
+      TESTRUN: 'ON'
       # test 286 disabled due to https://github.com/curl/curl/issues/12040
       DISABLED_TESTS: '~286 !1086 !1139 !1451 !1501 !1177 !1477'
       ADD_PATH: 'C:/mingw-w64/x86_64-7.2.0-posix-seh-rt_v5-rev1/mingw64/bin'
@@ -170,7 +171,7 @@ environment:
       SCHANNEL: 'ON'
       ENABLE_UNICODE: 'OFF'
       HTTP_ONLY: 'OFF'
-      TESTING: 'ON'
+      TESTRUN: 'ON'
       # test 286 disabled due to https://github.com/curl/curl/issues/12040
       DISABLED_TESTS: '~286 !1086 !1139 !1451 !1501 !1177 !1477'
       ADD_PATH: 'C:/msys64/mingw64/bin'
@@ -184,7 +185,7 @@ environment:
       SCHANNEL: 'ON'
       ENABLE_UNICODE: 'OFF'
       HTTP_ONLY: 'OFF'
-      TESTING: 'OFF'
+      TESTRUN: 'OFF'
       DISABLED_TESTS: ''
       ADD_PATH: 'C:/mingw-w64/i686-6.3.0-posix-dwarf-rt_v5-rev1/mingw32/bin'
       MSYS2_ARG_CONV_EXCL: '/*'
@@ -198,56 +199,56 @@ environment:
       BUILD_SYSTEM: winbuild_vs2015
       DEBUG: 'yes'
       PATHPART: debug
-      TESTING: 'OFF'
+      TESTRUN: 'OFF'
       ENABLE_UNICODE: 'no'
     - job_name: 'winbuild, VS2015, Release, x64, OpenSSL 1.1.1, Build-only'
       APPVEYOR_BUILD_WORKER_IMAGE: 'Visual Studio 2015'
       BUILD_SYSTEM: winbuild_vs2015
       DEBUG: 'no'
       PATHPART: release
-      TESTING: 'OFF'
+      TESTRUN: 'OFF'
       ENABLE_UNICODE: 'no'
     - job_name: 'winbuild, VS2017, Debug, x64, OpenSSL 1.1.1, Build-only'
       APPVEYOR_BUILD_WORKER_IMAGE: 'Visual Studio 2017'
       BUILD_SYSTEM: winbuild_vs2017
       DEBUG: 'yes'
       PATHPART: debug
-      TESTING: 'OFF'
+      TESTRUN: 'OFF'
       ENABLE_UNICODE: 'no'
     - job_name: 'winbuild, VS2017, Release, x64, OpenSSL 1.1.1, Build-only'
       APPVEYOR_BUILD_WORKER_IMAGE: 'Visual Studio 2017'
       BUILD_SYSTEM: winbuild_vs2017
       DEBUG: 'no'
       PATHPART: release
-      TESTING: 'OFF'
+      TESTRUN: 'OFF'
       ENABLE_UNICODE: 'no'
     - job_name: 'winbuild, VS2015, Debug, x64, OpenSSL 1.1.1, Unicode, Build-only'
       APPVEYOR_BUILD_WORKER_IMAGE: 'Visual Studio 2015'
       BUILD_SYSTEM: winbuild_vs2015
       DEBUG: 'yes'
       PATHPART: debug
-      TESTING: 'OFF'
+      TESTRUN: 'OFF'
       ENABLE_UNICODE: 'yes'
     - job_name: 'winbuild, VS2015, Release, x64, OpenSSL 1.1.1, Unicode, Build-only'
       APPVEYOR_BUILD_WORKER_IMAGE: 'Visual Studio 2015'
       BUILD_SYSTEM: winbuild_vs2015
       DEBUG: 'no'
       PATHPART: release
-      TESTING: 'OFF'
+      TESTRUN: 'OFF'
       ENABLE_UNICODE: 'yes'
     - job_name: 'winbuild, VS2017, Debug, x64, OpenSSL 1.1.1, Unicode, Build-only'
       APPVEYOR_BUILD_WORKER_IMAGE: 'Visual Studio 2017'
       BUILD_SYSTEM: winbuild_vs2017
       DEBUG: 'yes'
       PATHPART: debug
-      TESTING: 'OFF'
+      TESTRUN: 'OFF'
       ENABLE_UNICODE: 'yes'
     - job_name: 'winbuild, VS2017, Release, x64, OpenSSL 1.1.1, Unicode, Build-only'
       APPVEYOR_BUILD_WORKER_IMAGE: 'Visual Studio 2017'
       BUILD_SYSTEM: winbuild_vs2017
       DEBUG: 'no'
       PATHPART: release
-      TESTING: 'OFF'
+      TESTRUN: 'OFF'
       ENABLE_UNICODE: 'yes'
 
     # generated VisualStudioSolution-based builds
@@ -256,7 +257,7 @@ environment:
       APPVEYOR_BUILD_WORKER_IMAGE: 'Visual Studio 2015'
       BUILD_SYSTEM: VisualStudioSolution
       PRJ_CFG: 'DLL Debug - DLL Windows SSPI - DLL WinIDN'
-      TESTING: 'OFF'
+      TESTRUN: 'OFF'
       VC_VERSION: VC12
 
 install:
