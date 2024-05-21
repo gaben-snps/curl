@@ -245,6 +245,7 @@ man_MANS =                                      \
   CURLOPT_MAXREDIRS.3                           \
   CURLOPT_MIME_OPTIONS.3                        \
   CURLOPT_MIMEPOST.3                            \
+  CURLOPT_MPTCP.3                               \
   CURLOPT_NETRC.3                               \
   CURLOPT_NETRC_FILE.3                          \
   CURLOPT_NEW_DIRECTORY_PERMS.3                 \
