@@ -41,9 +41,9 @@ if [ "${BUILD_SYSTEM}" = 'CMake' ]; then
   options=''
   [[ "${TARGET:-}" = *'ARM64'* ]] && SKIP_RUN='ARM64 architecture'
   [ "${OPENSSL}" = 'ON' ] && options+=" -DOPENSSL_ROOT_DIR=${openssl_root_win}"
-  if [ "${CURLDEBUG:-}" = 'ON' ]; then
-    options+=' -DENABLE_CURLDEBUG=ON'
-    TESTING='ON'  # enable building tests
+  if [ -n "${CURLDEBUG:-}" ]; then
+    options+=" -DENABLE_CURLDEBUG=${CURLDEBUG}"
+    [ "${CURLDEBUG}" = 'ON'] && TESTING='ON'  # enable building tests
   fi
   [ "${PRJ_CFG}" = 'Debug' ] && options+=' -DCMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG='
   [ "${PRJ_CFG}" = 'Release' ] && options+=' -DCMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE='
